@@ -1,0 +1,9 @@
+# registry/projects.yaml — the project catalog (example)
+# Resolve a task to a project slug HERE first, then read projects/<slug>/agent_brief.md.
+
+projects:
+  widget-detector:
+    title: "Widget Detector — robust small-object detection under occlusion"
+    status: experiment          # idea | literature | experiment | writing | submission | rebuttal | archived
+    dir: projects/widget-detector
+    # one fictional project is enough to show the shape; a real registry lists all of yours.
