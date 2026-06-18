@@ -49,21 +49,23 @@ cards land in L1.
 2. **Remote machines.** Does the user run agents on other hosts (a GPU server, a lab box)?
    If yes, get the SSH alias per host and confirm key-based login works non-interactively.
    Those logs get pulled into the same brain, tagged by machine.
-3. **An LLM endpoint for the distiller.** This is the most important question. The nightly
-   job needs an LLM to turn skeletons into facts. Ask:
-   - What endpoint can a *local, unattended* script call? (A local model server, a
-     cloud API key, a self-hosted proxy — whatever the user has.)
-   - **Critical:** is the model a *reasoning* model or a plain completion model? (See the
-     pitfall in Section 4 — reasoning models can silently return empty output on batch
-     structured-extraction prompts. Prefer a non-reasoning / standard chat model for this
-     job, or one with reasoning disabled.)
-   - Does reaching it require avoiding a proxy? (See the loopback-proxy pitfall in §4.)
+3. **An LLM provider for the distiller.** The nightly job needs *some* LLM to turn skeletons
+   into facts. The only universal requirement is this: **the user configures their own
+   provider.** Treat it as a provider-agnostic abstraction — `base_url`, `api_key`, `model`
+   in one config block — so the pipeline code never cares whether that points at a cloud API
+   (OpenAI, Anthropic, a router) or a local server (Ollama, vLLM, llama.cpp, LM Studio). Ask:
+   - Which provider will you use, and what are its `base_url` / `api_key` / `model`? Put them
+     in config or env, never hardcoded.
+   - It runs **unattended at night**, so the credential/endpoint must work non-interactively.
+   - Whatever you pick, **verify its actual behaviour before trusting it** — providers differ
+     in ways that matter for batch structured extraction (see Section 4).
 4. **A scheduler.** What runs jobs on a schedule on the user's machine? (cron, launchd,
    systemd timers, Task Scheduler, or the user's agent platform's own cron.) You'll register
    the nightly job with whatever they have.
-5. **Compliance limits.** Does any project forbid sending its data to a cloud LLM (e.g.
-   governed datasets)? If so, the distiller for those projects must use a local model only,
-   or skip them. Ask explicitly — this is a legal line, not a preference.
+5. **Compliance limits.** Does any project forbid sending its data to a cloud provider (e.g.
+   governed datasets under a data-use agreement)? If so, the distiller for those projects must
+   point at a provider that satisfies the restriction (often a self-hosted/local one), or skip
+   them entirely. Ask explicitly — this is a legal line, not a preference.
 
 > Every reference number, model id, path, and host in this spec is the author's. Replace
 > all of them with the user's answers.
@@ -87,25 +89,31 @@ cards land in L1.
 - **Quiet by default.** The nightly job speaks to the user **only** when it actually did
   something worth reporting (wrote cards) or something broke. Silent nights stay silent.
 
-## 4. Pitfalls you must handle (learned the hard way)
+## 4. Verify your provider; handle the pipeline-level pitfalls
 
-These cost the author real debugging time. Bake in the fixes:
+Two different classes of caveat live here. Don't confuse them.
 
-- **Reasoning models return empty output on batch extraction.** Some "reasoning" chat models
-  burn the entire token budget on internal reasoning and return *empty* message content for a
-  batched structured-extraction prompt (you get `choices` with no usable text). **Use a
-  standard completion/chat model for the distiller**, or one with reasoning turned off. Test
-  with a real batch before trusting it.
-- **`response_format: json_object` isn't universally supported.** Some endpoints (notably
-  certain proxied Claude routes) only accept a JSON *schema*, not the generic
-  `{"type":"json_object"}`, and will silently return nothing if you send the unsupported
-  form. Prefer prompting for strict JSON + parsing the first `{...}` block defensively, and
-  drop `response_format` if the endpoint chokes on it.
-- **Loopback calls hang behind a SOCKS proxy.** If the user's shell exports
-  `http_proxy/https_proxy/all_proxy` (common with Clash-style setups), a Python client can
-  funnel even `127.0.0.1` calls through the proxy and **hang forever**. Strip proxy env vars
-  at the top of any script that calls a local endpoint: unset
-  `http_proxy https_proxy all_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY`.
+**(A) Provider behaviour varies — verify yours, don't assume.** The author hit specific bugs
+on one specific endpoint; *you* may hit none, or different ones, depending on the provider you
+configured in §2.3. So the rule is **test your provider on a real batch before trusting it**,
+and watch for these *categories* of difference (examples, not predictions):
+
+- **Some models return empty/garbage on batch structured-extraction.** Certain "reasoning"
+  models can spend their token budget on internal reasoning and hand back empty message
+  content for a JSON-extraction prompt; some small local models ignore the format instruction.
+  If your test batch comes back empty or unparseable, switch to a standard chat model, disable
+  reasoning, or raise the token budget — whatever your provider needs.
+- **Structured-output knobs aren't portable.** `response_format: json_object`, JSON-schema
+  mode, and tool/function-calling are supported unevenly across providers. Don't depend on any
+  one of them. Prompt for strict JSON and **parse the first `{...}` block defensively**, so the
+  pipeline works regardless of which knobs your provider honors.
+- **Local endpoints can get trapped by a shell proxy.** If the user's shell exports
+  `http_proxy/https_proxy/all_proxy` (common with VPN/Clash-style setups), an HTTP client may
+  route even `127.0.0.1` calls through the proxy and hang. *If* your provider is local, unset
+  those vars (or set `no_proxy`) before the call. (Irrelevant if you use a cloud provider.)
+
+**(B) Pipeline-level pitfalls — these are general, handle them regardless of provider:**
+
 - **Durable facts cluster at the END of a session.** A session opens with "let me look
   around" and *ends* with the decision/result. When you bound the transcript slice you send
   to the LLM, take **head + tail** (e.g. first 3 and last 5 turns), not just the opening.
@@ -135,7 +143,8 @@ possible (the distiller needs only an HTTP client).
      already exists), using the card template from Build Spec 01 plus
      `created_by: <pipeline>` + `auto_promoted: true` + an `expires:` date.
    - medium/low → write a short note into `inbox/auto_promoted_review/`.
-   - de-dup via a content-hash ledger; strip proxy env; degrade to no-op if the LLM is down.
+   - de-dup via a content-hash ledger; degrade to a no-op if the provider is unreachable
+     (and, if your provider is local, strip proxy env first — see §4A).
 5. **Nightly orchestrator** — a small wrapper that runs harvest (local + remote) → distiller,
    captures each step's output to a log, and emits **one** summary line to the user **only**
    if cards were written or something broke. Include the rollback command in any
@@ -178,7 +187,8 @@ The extraction prompt is where quality lives. It must instruct the model to:
 
 ## 8. Report back
 
-When done, print: which agents/machines are harvested and to where; which LLM endpoint the
-distiller uses and whether it's reasoning-safe; where auto cards vs. inbox notes land; the
+When done, print: which agents/machines are harvested and to where; which LLM provider the
+distiller uses (and the result of your verification test from §4A); where auto cards vs. inbox
+notes land; the
 exact rollback command; the scheduler entry created; and how to run the whole pipeline once
 by hand in `--dry-run` to inspect it before trusting it.

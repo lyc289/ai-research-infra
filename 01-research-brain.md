@@ -41,7 +41,8 @@ Ask the user (or detect, then confirm). Record the answers — they parameterise
 4. **What are your active projects, right now?** Get a short slug for each (e.g.
    `widget-detector`, `protein-fold`). Seed one project folder per slug. Don't invent projects.
 5. **Do you want a semantic-search layer later?** (Optional L2 — see Section 7.) If yes,
-   note whether they already run a local embeddings endpoint or vector store. If they don't
+   note whether they already have an embeddings provider (cloud or local) and a vector store.
+   If they don't
    know, default to **no L2** for v1; the brain is fully usable as grep-able Markdown.
 
 > **Rule:** anything you'd otherwise hardcode (a path, a model id, a host name) is a
