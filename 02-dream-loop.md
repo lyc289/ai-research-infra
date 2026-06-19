@@ -43,8 +43,10 @@ cards land in L1.
 ## 2. Discover the environment (before writing any script)
 
 1. **Agent log locations.** For each agent the user uses, where are the raw conversation
-   logs on disk, and in what shape? You need a reader per format. Confirm the actual paths —
-   do not assume.
+   logs on disk, and in what shape? You need a reader per format. See the *Known agent log
+   locations* table in Build Spec 01 §2 for the common defaults (Claude Code = a per-project
+   dir of `.jsonl`; Codex = a by-date tree of `.jsonl`) — but confirm them on the actual
+   machine, since they drift with releases.
 2. **Remote machines.** Does the user run agents on other hosts (a GPU server, a lab box)?
    If yes, get the SSH alias per host. Those logs get pulled into the same brain, tagged by
    machine.
@@ -89,14 +91,18 @@ Adapt names/paths to the user's setup. Keep each script single-purpose.
 
 1. **Harvesters** — one per agent log format. Copy new log files from the agent's dir into
    `raw/agent_logs/<agent>/<machine>/<slug>/`, with a sidecar of metadata. Infer the project
-   slug from the session's working directory; unmatched → an `_unsorted/` bucket the user can
-   later route. Support `--since DATE` and `--dry-run`.
+   slug from the session's working directory — but note **where the cwd lives differs per
+   agent**: Claude Code encodes it in the *directory name* (decode `-Users-…` back to a path),
+   Codex stores it *inside* each file's `session_meta`. Unmatched → an `_unsorted/` bucket the
+   user can later route. Support `--since DATE` and `--dry-run`.
 2. **Remote harvester** (only if §2.2 applies) — pull a remote host's agent log dirs into a
    local mirror, then run the harvesters against that mirror with the host's machine label.
    Skip cleanly if the host is unreachable.
 3. **Session digester** — turn one raw log file into a **bounded** skeleton (task, the turns
    that carry signal, tools used) — never the full transcript. This bounded skeleton is the
-   only thing the LLM ever sees.
+   only thing the LLM ever sees. **If an agent already writes its own session summaries** (e.g.
+   Codex's `rollout_summaries/`), prefer those over re-digesting the raw rollout — they're
+   higher-signal and cheaper.
 4. **Distiller + promoter** (the core) — for each project, batch its recent skeletons, ask the
    provider for 0..N atomic durable facts as strict JSON (each tagged `type` + `confidence`):
    - high-confidence → write an auto memory card (additive; skip if it already exists), using

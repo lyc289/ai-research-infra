@@ -49,6 +49,25 @@ Ask the user (or detect, then confirm). Record the answers — they parameterise
 > question for the user, not a constant. The reference numbers in this spec are the
 > author's; they are almost certainly wrong for this user.
 
+### Known agent log locations (a starting point — verify, they drift with releases)
+
+For question 1, you usually don't have to ask where the logs live — popular agents have stable,
+product-level locations. Use this table to *find and confirm* them, not as a hard assumption.
+**These paths change across versions; verify on the actual machine, and for any tool not listed,
+ask the user.**
+
+| Agent | Conversation history (raw) | Global instruction file | Tool's own auto-memory |
+|-------|----------------------------|-------------------------|------------------------|
+| **Claude Code** | `~/.claude/projects/<encoded-cwd>/<uuid>.jsonl` — one dir per project; the dir name is the project's absolute path with `/` → `-` (e.g. `-Users-alice-myrepo`); one `.jsonl` per session | `~/.claude/CLAUDE.md` (global) + repo-level `CLAUDE.md` | `~/.claude/projects/<p>/memory/`, `~/.claude/history.jsonl` |
+| **Codex** | `~/.codex/sessions/YYYY/MM/DD/*.jsonl` — laid out **by date, not by project**; the working dir is inside each file's `session_meta`, not the path | `~/.codex/AGENTS.md` (global) + repo-level `AGENTS.md` | `~/.codex/memories/` (incl. self-written `rollout_summaries/*.md`) |
+| **Cursor / others** | varies by app | varies (`.cursorrules`, etc.) | ask the user |
+
+Two consequences worth noting now (they matter for Build Spec 02): Claude Code encodes the
+project in the **directory name**, while Codex encodes it **inside the file** — so a harvester
+infers the project slug differently for each. And Codex already writes its own session summaries,
+which are higher-signal than re-digesting raw rollouts.
+
+
 ## 3. The non-negotiable design principles
 
 These are the load-bearing decisions. Encode them; do not "improve" them away.
