@@ -1,4 +1,4 @@
-# research-infra
+# ai-research-infra
 
 **Build-spec prompts for a personal, local-first AI research infrastructure.**
 
