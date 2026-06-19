@@ -99,20 +99,6 @@ yourself.
   harvest, related-work survey, figure generation, Zotero management). Those are the
   *capabilities*; the brain here is the *shared memory* they read and write.
 
-## Honest caveats
-
-- **Reference designs, not turnkey software.** Expect to adapt. Your agent does most of the
-  adapting; you own the result. There is nothing here that "runs" on its own — your agent builds
-  that part.
-- **No support for your specific stack.** Fork it, change it, make it yours. Issues that improve
-  the *specs* (clearer steps, a missing design consideration) are welcome.
-- **Never let an agent commit secrets or governed data.** Keep tokens, keys, and
-  participant-level data out of any tracked file.
-
-## License
-
-MIT. Use it, fork it, build your own.
-
 ---
 
 # 中文
