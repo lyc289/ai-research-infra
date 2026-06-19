@@ -21,9 +21,7 @@ Companion to the essay 配套文章： [Staying Grounded in Fast-Paced AI Resear
 ## Why build-specs, not a framework
 
 The most valuable part of any personal research setup is **how it's designed and the traps it
-avoids** — not one person's exact wiring to their local model server, their vector store, their
-scheduler. That wiring is the least portable thing there is; ship it as a framework and most
-people bounce off the install before they ever get the idea.
+avoids**.
 
 So instead of shipping an implementation, this repo ships the **design as a prompt**. Your
 coding agent reads the spec, interviews you about *your* tools and paths, and stands the system
@@ -121,13 +119,8 @@ MIT. Use it, fork it, build your own.
 
 ## 为什么是「构建说明书」，而不是一个框架
 
-任何人的个人科研系统里，最值钱的部分是**它的设计思路、以及它绕开了哪些坑**——而不是某个人
-连到自己本地模型服务、向量库、调度器的那套具体接线。那套接线恰恰是最不可迁移的东西；做成框架
-发出去，大多数人会卡在安装上，根本走不到「理解这个想法」那一步。
-
-所以这个仓库交付的不是某个实现，而是**把设计本身做成 prompt**。你的 coding agent 读完规范，
+任何人的个人科研系统里，最值钱的部分是**它的设计思路**，所以这个仓库交付的不是某个实现，而是**把设计本身做成 prompt**。你的 coding agent 读完规范，
 采访*你*的工具和路径，然后在*你*的环境里把系统搭起来。规范负责架构与原则，你的 agent 负责适配。
-这也正是那篇文章的核心观点——让 agent 去做领域特定的「翻译」工作。
 
 ## 三个系统
 
@@ -185,15 +178,3 @@ MIT. Use it, fork it, build your own.
 - [`jxtse/scientific-research-skills`](https://github.com/jxtse/scientific-research-skills) ——
   **工具面**：给 coding agent 的具体科研 skills（文献搜索、全文批量下载、相关工作综述、配图生成、
   Zotero 管理）。那些是*能力*；这里的 brain 是它们读写的*共享记忆*。
-
-## 几点坦白
-
-- **这是参考设计，不是开箱即用的软件。** 需要适配，且大部分适配由你的 agent 完成，结果由你负责。
-  这里没有任何东西能「自己跑起来」——那部分由你的 agent 搭。
-- **不针对你的具体技术栈做支持。** Fork 它、改它、变成你的。改进*规范本身*的 issue（更清晰的步骤、
-  遗漏的设计考量）很欢迎。
-- **绝不要让 agent 提交密钥或受管控的数据。** token、key、个体级数据一律不进任何被追踪的文件。
-
-## 许可
-
-MIT。用它、fork 它、搭你自己的。
