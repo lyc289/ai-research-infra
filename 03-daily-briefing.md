@@ -109,6 +109,12 @@ Implementation notes:
 - Favor **official APIs / durable clients / RSS** over one-off scrapers. If a platform has a
   maintained client or feed, use it — it survives; scrapers rot.
 
+> **A concrete starting point.** [`examples/briefing-source-set.md`](examples/briefing-source-set.md)
+> contains the author's actual AI-research source set (~64 feeds — deep blogs, official lab
+> blogs, a curated aggregator, an X following shortlist, GitHub release feeds, subreddits), the
+> de-personalised selection prompt, and a pointer to the upstream fetching pipeline. Fork it and
+> cut it down to yours rather than starting from a blank list.
+
 ## 6. Acceptance criteria
 
 - [ ] Steps 1–3 run with **no LLM calls** and produce a stable ~15–20 candidate shortlist.

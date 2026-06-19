@@ -22,3 +22,10 @@ A real brain also has `timeline.md`, `open_questions.md`, `storytelling.md`,
 `experiments/`, a fuller `wiki/`, and the `scripts/` tooling — omitted here to keep the
 example readable. See [`../01-research-brain.md`](../01-research-brain.md) §4 for the full
 structure.
+
+## Also here
+
+- [`briefing-source-set.md`](briefing-source-set.md) — the author's actual daily-briefing
+  source set (~64 AI/research feeds), the de-personalised selection method, and pointers to the
+  upstream pipeline tools. A concrete starting point for Build Spec 03, meant to be cut down to
+  your own sources.
