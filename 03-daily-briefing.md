@@ -36,9 +36,7 @@ short, ranked, deduplicated digest — so the user spends attention on substance
    this to pick what's relevant. If Build Spec 01's brain exists, read project briefs from it
    (Section 7) instead of asking.
 4. **An LLM provider** for the final selection pass only. Same universal rule as Build Spec 02:
-   **the user configures their own provider** (`base_url` / `api_key` / `model`; cloud or
-   local). Verify it does structured selection cleanly before trusting it — see Build Spec 02
-   §4A for the categories of provider behaviour that vary.
+   **the user configures their own provider** (`base_url` / `api_key` / `model`; cloud or local).
 5. **Delivery + schedule.** Where should the briefing land (a chat platform, email, a local
    file, a dashboard)? What time? What scheduler runs it?
 6. **API access reality.** Which sources need keys / authenticated clients (X/Twitter, some
@@ -100,8 +98,6 @@ Implementation notes:
 - **Step 4's prompt** gets the *shortlist only* (already small), plus the user's interest
   context, and is asked to select + justify — not to re-rank from scratch and not to
   summarise everything. Keep its output structured (ordered list + one-line rationale each).
-- Reuse the provider-verification guidance from Build Spec 02 §4A (test before trusting;
-  structured-output knobs aren't portable; strip proxy env only if your provider is local).
 
 ## 5. Sourcing guidance (quality lever)
 
@@ -147,6 +143,6 @@ Keep this optional: the briefing must still run standalone if the brain isn't th
 
 When done, print: the source list and per-source method (API/feed/client); the deterministic
 rules implemented (priority weights, recency, dedup, caps, floors); which LLM provider does
-the final pick (and your verification result); the delivery target + schedule entry; and a
+the final pick; the delivery target + schedule entry; and a
 one-shot dry-run command that prints the shortlist (post step 3) and the final digest so the
 user can inspect the filter before trusting it.
