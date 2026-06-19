@@ -12,7 +12,7 @@ you, adapted to your environment.**
 这不是框架，也不是库。它们是三份 Markdown 规范，你把它交给*你自己的* coding agent（Claude
 Code、Codex、Cursor，任何你用的），由它**照着帮你搭出来，并适配你自己的环境**。
 
-Companion to the essay 配套文章： [*Staying Grounded in Fast-Paced AI Research 快节奏的科研下，我们如何自处？*]([https://jxtse.github.io](https://jxtse.github.io/blog/how-to-cope-with-fast-paced-research/)) /
+Companion to the essay 配套文章： [Staying Grounded in Fast-Paced AI Research 快节奏的科研下，我们如何自处？](https://jxtse.github.io/blog/how-to-cope-with-fast-paced-research) 
 
 ---
 
