@@ -181,6 +181,13 @@ def parse_llm_json(content: str) -> Any:
     return json.loads(content)
 
 
+def openai_chat_url(base_url: str) -> str:
+    base = base_url.rstrip("/")
+    if base.endswith("/chat/completions"):
+        return base
+    return base + "/chat/completions"
+
+
 def call_openai_final_select(shortlist: list[dict[str, Any]], total_limit: int) -> list[dict[str, Any]]:
     api_key = os.environ.get("OPENAI_API_KEY")
     base_url = os.environ.get("OPENAI_BASE_URL")
@@ -203,18 +210,13 @@ def call_openai_final_select(shortlist: list[dict[str, Any]], total_limit: int) 
             }
         )
 
-    system = (
-        "你是一个 AI 研究简报编辑。你只能从候选列表中选择条目，不能编造新条目。"
-        "除候选标题和链接本身外，你输出的所有文字必须是中文。"
-        "排序、去重和来源优先级已经由代码完成；你的任务是做最后的语义筛选。"
-    )
+    system = "你是一个 AI 研究简报编辑。你只输出 JSON，理由必须是中文。"
     user = {
-        "任务": f"从候选中选择 5 到 {total_limit} 条最值得今天阅读的 AI 研究/工程动态。",
+        "任务": f"从候选中选择 5 到 {total_limit} 条最值得今天阅读的 AI 研究或工程动态。",
         "选择原则": [
-            "优先选择研究博客、机构博客、重要工程发布和真正有信息密度的内容。",
-            "避免同一主题重复出现。",
-            "保留至少两条非普通新闻类内容；如果 GitHub release 很重要，可以保留。",
-            "每条给出一句中文理由，说明为什么值得看。",
+            "优先选择信息密度高、与 AI 研究或工程实践相关的内容。",
+            "避免重复主题。",
+            "每条给出一句中文理由。",
         ],
         "输出格式": {
             "items": [
@@ -234,7 +236,7 @@ def call_openai_final_select(shortlist: list[dict[str, Any]], total_limit: int) 
         "max_tokens": 800,
         "response_format": {"type": "json_object"},
     }
-    url = base_url.rstrip("/") + "/chat/completions"
+    url = openai_chat_url(base_url)
 
     request = urllib.request.Request(
         url,
