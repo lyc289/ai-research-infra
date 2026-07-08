@@ -67,23 +67,34 @@ jobs:
       - name: 运行 tech-news-digest 流水线
         working-directory: tech-news-digest
         run: |
-          RUN_ONLY="${ONLY/github-releases/github}"
-          SKIP_STEPS=""
+          SKIP_STEPS=()
+
+          if [[ ",$ONLY," != *",rss,"* ]]; then
+            SKIP_STEPS+=(rss)
+          fi
+          if [[ ",$ONLY," != *",github-releases,"* && ",$ONLY," != *",github,"* ]]; then
+            SKIP_STEPS+=(github)
+          fi
           if [[ ",$ONLY," != *",trending,"* ]]; then
-            SKIP_STEPS="github trending"
+            SKIP_STEPS+=("github trending")
+          fi
+          if [[ ",$ONLY," != *",twitter,"* ]]; then
+            SKIP_STEPS+=(twitter)
+          fi
+          if [[ ",$ONLY," != *",reddit,"* ]]; then
+            SKIP_STEPS+=(reddit)
+          fi
+          if [[ ",$ONLY," != *",web,"* ]]; then
+            SKIP_STEPS+=(web)
           fi
 
-          extra_args=()
-          if [[ -n "$SKIP_STEPS" ]]; then
-            extra_args+=(--skip "$SKIP_STEPS")
-          fi
+          SKIP_ARG="$(IFS=,; echo "${SKIP_STEPS[*]}")"
 
           python scripts/run-pipeline.py \
             --defaults config/defaults \
             --config ../workspace/config \
             --hours "$HOURS" \
-            --only "$RUN_ONLY" \
-            "${extra_args[@]}" \
+            --skip "$SKIP_ARG" \
             --archive-dir ../workspace/archive/tech-news-digest \
             --output ../artifacts/td-merged.json \
             --debug \
