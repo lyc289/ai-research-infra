@@ -25,8 +25,8 @@ Twitter/X 和 Web Search 默认不启用，因为它们通常需要额外 API ke
 
 `Settings -> Secrets and variables -> Actions -> New repository secret`
 
-- 名称：`PUSHPLUS_TOKEN`
-- 值：你的 PushPlus token
+- 名称：`PUSHPLUS_TOKENS`
+- 值：一个或多个 PushPlus token；多个 token 用英文逗号分隔，例如 `token1,token2`
 - 名称：`OPENAI_BASE_URL`
 - 值：OpenAI-compatible 接口地址
 - 名称：`OPENAI_API_KEY`

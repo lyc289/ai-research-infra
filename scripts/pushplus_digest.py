@@ -453,6 +453,18 @@ def send_pushplus(token: str, title: str, content: str) -> dict[str, Any]:
         return {"raw": raw}
 
 
+def pushplus_tokens_from_env() -> list[str]:
+    raw = os.environ.get("PUSHPLUS_TOKENS") or os.environ.get("PUSHPLUS_TOKEN") or ""
+    tokens = []
+    seen = set()
+    for token in raw.split(","):
+        token = token.strip()
+        if token and token not in seen:
+            tokens.append(token)
+            seen.add(token)
+    return tokens
+
+
 def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -479,17 +491,23 @@ def main() -> int:
         print(content)
         return 0
 
-    token = os.environ.get("PUSHPLUS_TOKEN")
-    if not token:
-        print("PUSHPLUS_TOKEN is not set; rendered digest but did not send.", file=sys.stderr)
+    tokens = pushplus_tokens_from_env()
+    if not tokens:
+        print("PUSHPLUS_TOKENS/PUSHPLUS_TOKEN is not set; rendered digest but did not send.", file=sys.stderr)
         return 2
 
-    result = send_pushplus(token=token, title=title, content=content)
-    print(json.dumps(result, ensure_ascii=False, indent=2))
+    results = []
+    ok = True
+    for idx, token in enumerate(tokens, start=1):
+        result = send_pushplus(token=token, title=title, content=content)
+        code = result.get("code")
+        success = code in (None, 200, "200")
+        ok = ok and success
+        results.append({"recipient": idx, "success": success, "response": result})
 
-    code = result.get("code")
-    if code not in (None, 200, "200"):
-        print(f"PushPlus returned non-success response: {html.escape(str(result))}", file=sys.stderr)
+    print(json.dumps({"sent": len(results), "results": results}, ensure_ascii=False, indent=2))
+    if not ok:
+        print(f"PushPlus returned non-success response: {html.escape(str(results))}", file=sys.stderr)
         return 1
     return 0
 

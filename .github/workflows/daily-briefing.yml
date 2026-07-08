@@ -31,7 +31,7 @@ jobs:
     env:
       HOURS: ${{ github.event.inputs.hours || '48' }}
       ONLY: ${{ github.event.inputs.only || 'rss,github-releases' }}
-      PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+      PUSHPLUS_TOKENS: ${{ secrets.PUSHPLUS_TOKENS }}
       OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-4o-mini' }}
