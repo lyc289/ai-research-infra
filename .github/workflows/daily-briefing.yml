@@ -32,6 +32,9 @@ jobs:
       HOURS: ${{ github.event.inputs.hours || '48' }}
       ONLY: ${{ github.event.inputs.only || 'rss,github-releases' }}
       PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+      OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-4o-mini' }}
 
     steps:
       - name: 检出调度仓库

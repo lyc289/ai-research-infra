@@ -13,12 +13,13 @@
 - 来源配置：运行时从本仓库整理的 AI/research 来源名单生成
 - 投递方式：PushPlus 微信推送
 - 结果文件：合并后的 JSON、运行元数据、调试文件、推送用 Markdown
+- 最终筛选：先用确定性规则生成候选池，再用 OpenAI-compatible 模型做最后 5-7 条中文筛选
 
 Twitter/X 和 Web Search 默认不启用，因为它们通常需要额外 API key。添加上游
 `tech-news-digest` 所需的 secret 后，可以手动运行 workflow，并把 `only` 改成
 `rss,github-releases,twitter,web,trending`。
 
-## 必需 secret
+## 必需 secret 和变量
 
 在 GitHub 仓库里添加：
 
@@ -26,8 +27,17 @@ Twitter/X 和 Web Search 默认不启用，因为它们通常需要额外 API ke
 
 - 名称：`PUSHPLUS_TOKEN`
 - 值：你的 PushPlus token
+- 名称：`OPENAI_BASE_URL`
+- 值：OpenAI-compatible 接口地址
+- 名称：`OPENAI_API_KEY`
+- 值：模型接口 key
 
-不要把 token 提交到仓库。
+在 `Settings -> Secrets and variables -> Actions -> Variables` 添加：
+
+- 名称：`OPENAI_MODEL`
+- 值：`gpt-4o-mini`
+
+不要把 token 或 API key 提交到仓库。
 
 ## 如何查看状态
 
