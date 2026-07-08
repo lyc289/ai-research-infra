@@ -88,10 +88,10 @@ def render_markdown(data: dict[str, Any], meta: dict[str, Any] | None, per_topic
     items = top_articles(data, per_topic=per_topic, total_limit=total_limit)
 
     lines = [
-        f"# AI Research Daily Briefing",
+        f"# AI 研究每日简报",
         "",
-        f"- Generated: `{generated}`",
-        f"- Total after merge: `{stats.get('total_articles', '?')}`",
+        f"- 生成时间：`{generated}`",
+        f"- 合并去重后条目数：`{stats.get('total_articles', '?')}`",
     ]
 
     if meta:
@@ -102,19 +102,19 @@ def render_markdown(data: dict[str, Any], meta: dict[str, Any] | None, per_topic
                 if isinstance(step, dict):
                     source_bits.append(f"{step.get('name')}: {step.get('count', 0)}")
             if source_bits:
-                lines.append(f"- Sources: {' | '.join(source_bits)}")
+                lines.append(f"- 来源计数：{' | '.join(source_bits)}")
 
         health = meta.get("health_summary")
         if isinstance(health, dict):
             stale = health.get("stale_sources") or health.get("dead_sources") or []
             if stale:
-                lines.append(f"- Source health: {len(stale)} stale/dead sources")
+                lines.append(f"- 来源健康：{len(stale)} 个来源可能失效或长期无更新")
 
-    lines.extend(["", "## Top items"])
+    lines.extend(["", "## 今日精选"])
 
     if not items:
         lines.append("")
-        lines.append("No items were selected from this run. Check the Actions artifact for raw output.")
+        lines.append("本次没有筛选出条目。可以查看 GitHub Actions artifact 里的原始输出。")
     else:
         for idx, (label, article) in enumerate(items, start=1):
             title = str(article.get("title") or "Untitled").strip()
@@ -131,16 +131,16 @@ def render_markdown(data: dict[str, Any], meta: dict[str, Any] | None, per_topic
                 lines.append(f"{idx}. **[{title}]({url})**")
             else:
                 lines.append(f"{idx}. **{title}**")
-            lines.append(f"   - Topic: {label}")
-            lines.append(f"   - Source: {source} | Score: {score}")
+            lines.append(f"   - 主题：{label}")
+            lines.append(f"   - 来源：{source} | 分数：{score}")
             if snippet:
-                lines.append(f"   - Why scan it: {snippet}")
+                lines.append(f"   - 为什么值得看：{snippet}")
 
     lines.extend(
         [
             "",
             "---",
-            "Raw JSON, metadata, and debug files are saved as GitHub Actions artifacts.",
+            "原始 JSON、运行元数据和调试文件已保存为 GitHub Actions artifacts。",
         ]
     )
     return "\n".join(lines)
@@ -181,7 +181,7 @@ def main() -> int:
     parser.add_argument("--input", required=True, type=Path, help="Merged JSON from tech-news-digest.")
     parser.add_argument("--meta", type=Path, help="Optional .meta.json from tech-news-digest.")
     parser.add_argument("--output", required=True, type=Path, help="Markdown digest written for artifacts.")
-    parser.add_argument("--title", default="AI Research Daily Briefing", help="PushPlus message title.")
+    parser.add_argument("--title", default="AI 研究每日简报", help="PushPlus message title.")
     parser.add_argument("--per-topic", type=int, default=3, help="Maximum items considered per topic.")
     parser.add_argument("--limit", type=int, default=7, help="Maximum items sent in the digest.")
     parser.add_argument("--dry-run", action="store_true", help="Render only; do not send PushPlus.")

@@ -1,21 +1,21 @@
-name: Daily AI Research Briefing
+name: AI 研究每日简报
 
 on:
   schedule:
-    # 01:00 UTC = 09:00 Asia/Shanghai.
+    # 01:00 UTC = 北京时间 09:00。
     - cron: "0 1 * * *"
   workflow_dispatch:
     inputs:
       hours:
-        description: "How many recent hours to fetch"
+        description: "抓取最近多少小时"
         required: false
         default: "48"
       only:
-        description: "Comma-separated sources to run: rss,github,reddit,twitter,web,trending"
+        description: "要运行的来源类型，用英文逗号分隔：rss,github,twitter,web,trending"
         required: false
-        default: "rss,github,reddit"
+        default: "rss,github"
       dry_run:
-        description: "Render digest without sending PushPlus"
+        description: "只生成结果，不发送 PushPlus"
         required: false
         type: boolean
         default: false
@@ -30,37 +30,46 @@ jobs:
 
     env:
       HOURS: ${{ github.event.inputs.hours || '48' }}
-      ONLY: ${{ github.event.inputs.only || 'rss,github,reddit' }}
+      ONLY: ${{ github.event.inputs.only || 'rss,github' }}
       PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
 
     steps:
-      - name: Checkout scheduler repo
+      - name: 检出调度仓库
         uses: actions/checkout@v4
 
-      - name: Checkout tech-news-digest
+      - name: 检出 tech-news-digest
         uses: actions/checkout@v4
         with:
           repository: draco-agent/tech-news-digest
           path: tech-news-digest
 
-      - name: Set up Python
+      - name: 安装 Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install tech-news-digest dependencies
+      - name: 安装 tech-news-digest 依赖
         working-directory: tech-news-digest
         run: python -m pip install -r requirements.txt
 
-      - name: Prepare output directories
+      - name: 准备输出目录
         run: |
-          mkdir -p artifacts workspace/archive/tech-news-digest
+          mkdir -p artifacts workspace/config workspace/archive/tech-news-digest
 
-      - name: Run tech-news-digest pipeline
+      - name: 生成 jxtse 精选来源配置
+        run: |
+          python scripts/build_briefing_config.py \
+            --source-md examples/briefing-source-set.md \
+            --defaults tech-news-digest/config/defaults/sources.json \
+            --output-dir workspace/config
+          cp workspace/config/tech-news-digest-sources.json artifacts/tech-news-digest-sources.json
+
+      - name: 运行 tech-news-digest 流水线
         working-directory: tech-news-digest
         run: |
           python scripts/run-pipeline.py \
             --defaults config/defaults \
+            --config ../workspace/config \
             --hours "$HOURS" \
             --only "$ONLY" \
             --archive-dir ../workspace/archive/tech-news-digest \
@@ -69,20 +78,20 @@ jobs:
             --force \
             --verbose
 
-      - name: Render and send PushPlus briefing
+      - name: 渲染并发送 PushPlus 简报
         run: |
           args=(
             --input artifacts/td-merged.json
             --meta artifacts/td-merged.meta.json
             --output artifacts/pushplus-digest.md
-            --title "AI Research Daily Briefing"
+            --title "AI 研究每日简报"
           )
           if [ "${{ github.event.inputs.dry_run || 'false' }}" = "true" ]; then
             args+=(--dry-run)
           fi
           python scripts/pushplus_digest.py "${args[@]}"
 
-      - name: Upload run artifacts
+      - name: 上传执行结果
         if: always()
         uses: actions/upload-artifact@v4
         with:
