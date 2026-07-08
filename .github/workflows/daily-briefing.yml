@@ -110,7 +110,6 @@ jobs:
             --input artifacts/td-merged.json
             --meta artifacts/td-merged.meta.json
             --output artifacts/pushplus-digest.md
-            --title "AI 研究每日简报"
           )
           if [ "${{ github.event.inputs.dry_run || 'false' }}" = "true" ]; then
             args+=(--dry-run)

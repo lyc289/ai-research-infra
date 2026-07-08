@@ -11,9 +11,10 @@ import re
 import sys
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 
 PUSHPLUS_URL = "https://www.pushplus.plus/send"
@@ -44,6 +45,18 @@ STEP_LABELS = {
     "Twitter": "社交媒体",
     "Web": "网页搜索",
 }
+
+
+def beijing_now() -> datetime:
+    try:
+        return datetime.now(ZoneInfo("Asia/Shanghai"))
+    except Exception:
+        return datetime.now(timezone(timedelta(hours=8)))
+
+
+def default_pushplus_title(now: datetime | None = None) -> str:
+    dt = now or beijing_now()
+    return f"{dt.year}.{dt.month}.{dt.day} AI每日简报"
 
 SOURCE_TIER_WEIGHTS = {
     # Mirrors the jxtse spec intent: durable/high-signal written sources first,
@@ -268,15 +281,16 @@ def render_markdown(
     meta: dict[str, Any] | None,
     shortlist_limit: int,
     total_limit: int,
+    title: str,
 ) -> str:
-    now = datetime.now(timezone.utc).astimezone()
+    now = beijing_now()
     stats = data.get("output_stats", {})
     generated = data.get("generated") or now.isoformat(timespec="seconds")
     shortlist = build_shortlist(data, shortlist_limit=shortlist_limit)
     items = call_openai_final_select(shortlist, total_limit=total_limit)
 
     lines = [
-        f"# AI 研究每日简报",
+        f"# {title}",
         "",
         f"- 生成时间：`{generated}`",
         f"- 合并去重后条目数：`{stats.get('total_articles', '?')}`",
@@ -317,12 +331,12 @@ def render_markdown(
 
             lines.append("")
             if url:
-                lines.append(f"{idx}. **[{title}]({url})**")
+                lines.append(f"### {idx}. [{title}]({url})")
             else:
-                lines.append(f"{idx}. **{title}**")
-            lines.append(f"   - 主题：{label}")
-            lines.append(f"   - 来源类型：{source} ｜ 分数：{score}")
-            lines.append(f"   - 为什么值得看：{reason}")
+                lines.append(f"### {idx}. {title}")
+            lines.append(f"主题：{label}")
+            lines.append(f"来源类型：{source} ｜ 分数：{score}")
+            lines.append(f"为什么值得看：{reason}")
 
     lines.extend(
         [
@@ -372,7 +386,7 @@ def main() -> int:
     parser.add_argument("--input", required=True, type=Path, help="Merged JSON from tech-news-digest.")
     parser.add_argument("--meta", type=Path, help="Optional .meta.json from tech-news-digest.")
     parser.add_argument("--output", required=True, type=Path, help="Markdown digest written for artifacts.")
-    parser.add_argument("--title", default="AI 研究每日简报", help="PushPlus message title.")
+    parser.add_argument("--title", help="PushPlus message title. Defaults to '<yyyy.m.d> AI每日简报'.")
     parser.add_argument("--shortlist-limit", type=int, default=20, help="Maximum candidates shown to the LLM.")
     parser.add_argument("--limit", type=int, default=20, help="Maximum items sent in the digest.")
     parser.add_argument("--dry-run", action="store_true", help="Render only; do not send PushPlus.")
@@ -380,7 +394,8 @@ def main() -> int:
 
     data = load_json(args.input)
     meta = load_json(args.meta) if args.meta and args.meta.exists() else None
-    content = render_markdown(data, meta, shortlist_limit=args.shortlist_limit, total_limit=args.limit)
+    title = args.title or default_pushplus_title()
+    content = render_markdown(data, meta, shortlist_limit=args.shortlist_limit, total_limit=args.limit, title=title)
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(content, encoding="utf-8")
@@ -394,7 +409,7 @@ def main() -> int:
         print("PUSHPLUS_TOKEN is not set; rendered digest but did not send.", file=sys.stderr)
         return 2
 
-    result = send_pushplus(token=token, title=args.title, content=content)
+    result = send_pushplus(token=token, title=title, content=content)
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
     code = result.get("code")
