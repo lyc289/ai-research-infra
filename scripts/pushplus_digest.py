@@ -67,6 +67,69 @@ SOURCE_TIER_WEIGHTS = {
     "reddit": 10,
     "twitter": 5,
 }
+AI_RELEVANCE_LATIN_TERMS = {
+    "ai",
+    "agi",
+    "llm",
+    "llms",
+    "gpt",
+    "rag",
+    "ml",
+    "agent",
+    "agents",
+    "agentic",
+    "openai",
+    "anthropic",
+    "claude",
+    "chatgpt",
+    "gemini",
+    "deepseek",
+    "qwen",
+    "kimi",
+    "ollama",
+    "vllm",
+    "langchain",
+    "llama",
+    "copilot",
+    "transformer",
+    "diffusion",
+    "embedding",
+    "inference",
+    "training",
+    "finetuning",
+    "fine-tuning",
+    "model",
+    "models",
+    "robotics",
+    "gpu",
+    "nvidia",
+    "pytorch",
+    "huggingface",
+    "mcp",
+}
+
+AI_RELEVANCE_CJK_TERMS = {
+    "大模型",
+    "大语言模型",
+    "语言模型",
+    "多模态",
+    "智能体",
+    "生成式",
+    "机器学习",
+    "深度学习",
+    "神经网络",
+    "模型训练",
+    "模型推理",
+    "微调",
+    "向量",
+    "算力",
+    "机器人",
+    "自动驾驶",
+    "语音识别",
+    "视频生成",
+    "文生图",
+    "人工智能",
+}
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -93,6 +156,16 @@ def article_source(article: dict[str, Any]) -> str:
         or ""
     ).strip().lower()
     return SOURCE_TYPE_LABELS.get(raw_type, "来源")
+
+
+def article_source_name(article: dict[str, Any]) -> str:
+    return str(
+        article.get("source_name")
+        or article.get("display_name")
+        or article.get("source")
+        or article.get("source_type")
+        or "未知来源"
+    ).strip()
 
 
 def topic_label(topic_id: str, topic_data: dict[str, Any]) -> str:
@@ -128,6 +201,20 @@ def article_sort_key(article: dict[str, Any]) -> float:
     return tier + score + multi_source_bonus
 
 
+def article_search_text(article: dict[str, Any]) -> str:
+    return " ".join(
+        str(article.get(key) or "")
+        for key in ("title", "summary", "snippet", "source_name", "display_name")
+    ).lower()
+
+
+def is_ai_relevant(article: dict[str, Any]) -> bool:
+    text = article_search_text(article)
+    if any(term in text for term in AI_RELEVANCE_CJK_TERMS):
+        return True
+    return any(re.search(rf"\b{re.escape(term)}\b", text) for term in AI_RELEVANCE_LATIN_TERMS)
+
+
 def flatten_ranked_articles(data: dict[str, Any]) -> list[dict[str, Any]]:
     candidates: list[dict[str, Any]] = []
     seen: set[str] = set()
@@ -144,6 +231,8 @@ def flatten_ranked_articles(data: dict[str, Any]) -> list[dict[str, Any]]:
         label = topic_label(topic_id, topic_data)
         for article in articles:
             if not isinstance(article, dict):
+                continue
+            if not is_ai_relevant(article):
                 continue
             title = str(article.get("title") or "").strip().lower()
             dedup_key = article_url(article).strip().lower() or title
@@ -195,9 +284,7 @@ def call_openai_final_select(shortlist: list[dict[str, Any]], total_limit: int) 
                 "序号": idx,
                 "标题": str(article.get("title") or ""),
                 "链接": article_url(article),
-                "主题": str(article.get("_topic_label") or ""),
-                "来源类型": article_source(article),
-                "来源名称": str(article.get("source_name") or ""),
+                "来源": article_source_name(article),
                 "确定性分数": article.get("quality_score", 0),
             }
         )
@@ -299,16 +386,6 @@ def render_markdown(
     ]
 
     if meta:
-        steps = meta.get("steps", [])
-        if isinstance(steps, list):
-            source_bits = []
-            for step in steps:
-                if isinstance(step, dict):
-                    step_name = str(step.get("name") or "")
-                    source_bits.append(f"{STEP_LABELS.get(step_name, step_name)}：{step.get('count', 0)}")
-            if source_bits:
-                lines.append(f"- 来源计数：{' ｜ '.join(source_bits)}")
-
         health = meta.get("health_summary")
         if isinstance(health, dict):
             stale = health.get("stale_sources") or health.get("dead_sources") or []
@@ -324,9 +401,8 @@ def render_markdown(
         for idx, article in enumerate(items, start=1):
             title = str(article.get("title") or "Untitled").strip()
             url = article_url(article)
-            source = article_source(article)
+            source_name = article_source_name(article)
             score = article.get("quality_score", 0)
-            label = str(article.get("_topic_label") or "")
             reason = str(article.get("_llm_reason") or chinese_reason(article))
 
             lines.append("")
@@ -334,8 +410,7 @@ def render_markdown(
                 lines.append(f"### {idx}. [{title}]({url})")
             else:
                 lines.append(f"### {idx}. {title}")
-            lines.append(f"主题：{label}")
-            lines.append(f"来源类型：{source} ｜ 分数：{score}")
+            lines.append(f"来源：{source_name} ｜ 分数：{score}")
             lines.append(f"为什么值得看：{reason}")
 
     lines.extend(
