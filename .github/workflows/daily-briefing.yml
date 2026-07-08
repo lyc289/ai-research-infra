@@ -11,9 +11,9 @@ on:
         required: false
         default: "48"
       only:
-        description: "要运行的来源类型，用英文逗号分隔：rss,github,twitter,web,trending"
+        description: "要运行的来源类型，用英文逗号分隔：rss,github-releases,twitter,web,trending"
         required: false
-        default: "rss,github"
+        default: "rss,github-releases"
       dry_run:
         description: "只生成结果，不发送 PushPlus"
         required: false
@@ -30,7 +30,7 @@ jobs:
 
     env:
       HOURS: ${{ github.event.inputs.hours || '48' }}
-      ONLY: ${{ github.event.inputs.only || 'rss,github' }}
+      ONLY: ${{ github.event.inputs.only || 'rss,github-releases' }}
       PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
 
     steps:
@@ -67,11 +67,23 @@ jobs:
       - name: 运行 tech-news-digest 流水线
         working-directory: tech-news-digest
         run: |
+          RUN_ONLY="${ONLY/github-releases/github}"
+          SKIP_STEPS=""
+          if [[ ",$ONLY," != *",trending,"* ]]; then
+            SKIP_STEPS="github trending"
+          fi
+
+          extra_args=()
+          if [[ -n "$SKIP_STEPS" ]]; then
+            extra_args+=(--skip "$SKIP_STEPS")
+          fi
+
           python scripts/run-pipeline.py \
             --defaults config/defaults \
             --config ../workspace/config \
             --hours "$HOURS" \
-            --only "$ONLY" \
+            --only "$RUN_ONLY" \
+            "${extra_args[@]}" \
             --archive-dir ../workspace/archive/tech-news-digest \
             --output ../artifacts/td-merged.json \
             --debug \

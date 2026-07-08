@@ -17,6 +17,33 @@ from typing import Any
 
 PUSHPLUS_URL = "https://www.pushplus.plus/send"
 
+TOPIC_LABELS = {
+    "llm": "大语言模型",
+    "ai-agent": "智能体",
+    "frontier-tech": "前沿技术",
+    "crypto": "加密与区块链",
+}
+
+SOURCE_TYPE_LABELS = {
+    "rss": "订阅源",
+    "github": "代码仓库发布",
+    "github-trending": "代码仓库趋势",
+    "github_trending": "代码仓库趋势",
+    "trending": "代码仓库趋势",
+    "reddit": "社区讨论",
+    "twitter": "社交媒体",
+    "web": "网页搜索",
+}
+
+STEP_LABELS = {
+    "RSS": "订阅源",
+    "GitHub": "代码仓库发布",
+    "GitHub Trending": "代码仓库趋势",
+    "Reddit": "社区讨论",
+    "Twitter": "社交媒体",
+    "Web": "网页搜索",
+}
+
 
 def load_json(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as f:
@@ -34,19 +61,39 @@ def article_url(article: dict[str, Any]) -> str:
 
 
 def article_source(article: dict[str, Any]) -> str:
-    return (
-        article.get("source_name")
+    raw_type = str(
+        article.get("source_type")
         or article.get("source")
+        or article.get("source_name")
         or article.get("display_name")
-        or article.get("source_type")
-        or "unknown"
-    )
+        or ""
+    ).strip().lower()
+    return SOURCE_TYPE_LABELS.get(raw_type, "来源")
 
 
 def topic_label(topic_id: str, topic_data: dict[str, Any]) -> str:
-    label = topic_data.get("label") or topic_data.get("name") or topic_id
+    label = TOPIC_LABELS.get(topic_id) or topic_data.get("label") or topic_data.get("name") or topic_id
     emoji = topic_data.get("emoji") or ""
     return f"{emoji} {label}".strip()
+
+
+def chinese_reason(article: dict[str, Any]) -> str:
+    raw_type = str(
+        article.get("source_type")
+        or article.get("source")
+        or article.get("source_name")
+        or article.get("display_name")
+        or ""
+    ).strip().lower()
+    if raw_type in {"github", "github-trending", "github_trending", "trending"}:
+        return "代码仓库出现更新或热度信号，适合快速判断是否与你的工具链和研究工作相关。"
+    if raw_type == "rss":
+        return "来自精选研究博客或机构来源，适合纳入今日研究动态快速浏览。"
+    if raw_type == "reddit":
+        return "来自社区讨论，适合观察研究者和开发者正在关注的问题。"
+    if raw_type in {"twitter", "web"}:
+        return "来自外部动态来源，适合作为今日趋势的补充线索。"
+    return "该条目在本次筛选中得分较高，适合快速浏览并判断是否需要深入阅读。"
 
 
 def top_articles(data: dict[str, Any], per_topic: int, total_limit: int) -> list[tuple[str, dict[str, Any]]]:
@@ -100,9 +147,10 @@ def render_markdown(data: dict[str, Any], meta: dict[str, Any] | None, per_topic
             source_bits = []
             for step in steps:
                 if isinstance(step, dict):
-                    source_bits.append(f"{step.get('name')}: {step.get('count', 0)}")
+                    step_name = str(step.get("name") or "")
+                    source_bits.append(f"{STEP_LABELS.get(step_name, step_name)}：{step.get('count', 0)}")
             if source_bits:
-                lines.append(f"- 来源计数：{' | '.join(source_bits)}")
+                lines.append(f"- 来源计数：{' ｜ '.join(source_bits)}")
 
         health = meta.get("health_summary")
         if isinstance(health, dict):
@@ -114,17 +162,13 @@ def render_markdown(data: dict[str, Any], meta: dict[str, Any] | None, per_topic
 
     if not items:
         lines.append("")
-        lines.append("本次没有筛选出条目。可以查看 GitHub Actions artifact 里的原始输出。")
+        lines.append("本次没有筛选出条目。可以查看本次运行的结果文件。")
     else:
         for idx, (label, article) in enumerate(items, start=1):
             title = str(article.get("title") or "Untitled").strip()
             url = article_url(article)
             source = article_source(article)
             score = article.get("quality_score", 0)
-            snippet = str(article.get("snippet") or article.get("summary") or "").strip()
-            snippet = " ".join(snippet.split())
-            if len(snippet) > 180:
-                snippet = snippet[:177].rstrip() + "..."
 
             lines.append("")
             if url:
@@ -132,15 +176,14 @@ def render_markdown(data: dict[str, Any], meta: dict[str, Any] | None, per_topic
             else:
                 lines.append(f"{idx}. **{title}**")
             lines.append(f"   - 主题：{label}")
-            lines.append(f"   - 来源：{source} | 分数：{score}")
-            if snippet:
-                lines.append(f"   - 为什么值得看：{snippet}")
+            lines.append(f"   - 来源类型：{source} ｜ 分数：{score}")
+            lines.append(f"   - 为什么值得看：{chinese_reason(article)}")
 
     lines.extend(
         [
             "",
             "---",
-            "原始 JSON、运行元数据和调试文件已保存为 GitHub Actions artifacts。",
+            "原始数据、运行元数据和调试文件已保存为本次运行的结果文件。",
         ]
     )
     return "\n".join(lines)
@@ -177,6 +220,9 @@ def send_pushplus(token: str, title: str, content: str) -> dict[str, Any]:
 
 
 def main() -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+
     parser = argparse.ArgumentParser(description="Send a tech-news-digest JSON as a PushPlus message.")
     parser.add_argument("--input", required=True, type=Path, help="Merged JSON from tech-news-digest.")
     parser.add_argument("--meta", type=Path, help="Optional .meta.json from tech-news-digest.")

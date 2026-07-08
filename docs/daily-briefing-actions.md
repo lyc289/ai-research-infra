@@ -9,14 +9,14 @@
 
 - Workflow：`.github/workflows/daily-briefing.yml`
 - 定时：每天 `01:00 UTC`，也就是北京时间 `09:00`
-- 默认来源类型：`rss,github`
+- 默认来源类型：`rss,github-releases`
 - 来源配置：运行时从本仓库整理的 AI/research 来源名单生成
 - 投递方式：PushPlus 微信推送
 - 结果文件：合并后的 JSON、运行元数据、调试文件、推送用 Markdown
 
 Twitter/X 和 Web Search 默认不启用，因为它们通常需要额外 API key。添加上游
 `tech-news-digest` 所需的 secret 后，可以手动运行 workflow，并把 `only` 改成
-`rss,github,twitter,web,trending`。
+`rss,github-releases,twitter,web,trending`。
 
 ## 必需 secret
 
@@ -54,5 +54,6 @@ Twitter/X 和 Web Search 默认不启用，因为它们通常需要额外 API ke
 输入项：
 
 - `hours`：抓取最近多少小时，默认 `48`。
-- `only`：运行哪些来源类型，默认 `rss,github`。
+- `only`：运行哪些来源类型，默认 `rss,github-releases`。这里的 `github-releases` 只跑
+  jxtse 清单里的 GitHub release，不包含 GitHub Trending。
 - `dry_run`：只生成 artifact，不发送 PushPlus。
