@@ -149,28 +149,7 @@ def flatten_ranked_articles(data: dict[str, Any]) -> list[dict[str, Any]]:
 
 def build_shortlist(data: dict[str, Any], shortlist_limit: int) -> list[dict[str, Any]]:
     """Apply deterministic jxtse-style filters before the LLM sees candidates."""
-    source_counts: dict[str, int] = {}
-    topic_counts: dict[str, int] = {}
-    shortlist: list[dict[str, Any]] = []
-
-    for article in flatten_ranked_articles(data):
-        source_id = str(article.get("source_id") or article.get("source_name") or article.get("source_type") or "")
-        topic = str(article.get("primary_topic") or article.get("topics", [""])[0] or "")
-
-        # Diversity guard: one loud source/topic should not dominate the shortlist.
-        if source_counts.get(source_id, 0) >= 3:
-            continue
-        if topic_counts.get(topic, 0) >= max(8, shortlist_limit // 2):
-            continue
-
-        shortlist.append(article)
-        source_counts[source_id] = source_counts.get(source_id, 0) + 1
-        topic_counts[topic] = topic_counts.get(topic, 0) + 1
-
-        if len(shortlist) >= shortlist_limit:
-            break
-
-    return shortlist
+    return flatten_ranked_articles(data)[:shortlist_limit]
 
 
 def parse_llm_json(content: str) -> Any:
@@ -196,6 +175,7 @@ def call_openai_final_select(shortlist: list[dict[str, Any]], total_limit: int) 
         raise RuntimeError("OPENAI_API_KEY 和 OPENAI_BASE_URL 必须设置，才能执行模型最终筛选。")
 
     candidates = []
+    expected_count = min(total_limit, len(shortlist))
     for idx, article in enumerate(shortlist, start=1):
         candidates.append(
             {
@@ -206,16 +186,21 @@ def call_openai_final_select(shortlist: list[dict[str, Any]], total_limit: int) 
                 "来源类型": article_source(article),
                 "来源名称": str(article.get("source_name") or ""),
                 "确定性分数": article.get("quality_score", 0),
-                "摘要": str(article.get("snippet") or article.get("summary") or "")[:200],
             }
         )
 
-    system = "你是一个 AI 研究简报编辑。你只输出 JSON，理由必须是中文。"
+    system = "你是一个 AI 研究简报编辑。你只输出 JSON。除标题和专有名词外，理由必须是中文。"
     user = {
-        "任务": f"从候选中选择 5 到 {total_limit} 条最值得今天阅读的 AI 研究或工程动态。",
+        "任务": f"从候选中按全局重要性输出 {expected_count} 条最值得今天阅读的 AI 研究或工程动态。",
+        "硬性要求": [
+            f"items 数组长度必须等于 {expected_count}。",
+            "如果候选数量等于要求数量，必须返回全部候选序号，只调整排序并补充中文理由。",
+            "不得因为主题相近、来源相同或标题相似而减少条目数。",
+        ],
         "选择原则": [
             "优先选择信息密度高、与 AI 研究或工程实践相关的内容。",
-            "避免重复主题。",
+            "不要按主题或来源做固定配额，只按全局重要性排序。",
+            "候选数量不足时返回全部候选；候选数量足够时必须返回指定数量。",
             "每条给出一句中文理由。",
         ],
         "输出格式": {
@@ -233,7 +218,7 @@ def call_openai_final_select(shortlist: list[dict[str, Any]], total_limit: int) 
             {"role": "user", "content": json.dumps(user, ensure_ascii=False)},
         ],
         "temperature": 0.2,
-        "max_tokens": 800,
+        "max_tokens": 1800,
         "response_format": {"type": "json_object"},
     }
     url = openai_chat_url(base_url)
@@ -273,8 +258,8 @@ def call_openai_final_select(shortlist: list[dict[str, Any]], total_limit: int) 
         if len(selected) >= total_limit:
             break
 
-    if len(selected) < 5:
-        raise RuntimeError("模型返回的有效条目少于 5 条。")
+    if len(selected) < expected_count:
+        raise RuntimeError(f"模型返回的有效条目少于要求数量：{len(selected)}/{expected_count}。")
     return selected
 
 
@@ -388,8 +373,8 @@ def main() -> int:
     parser.add_argument("--meta", type=Path, help="Optional .meta.json from tech-news-digest.")
     parser.add_argument("--output", required=True, type=Path, help="Markdown digest written for artifacts.")
     parser.add_argument("--title", default="AI 研究每日简报", help="PushPlus message title.")
-    parser.add_argument("--shortlist-limit", type=int, default=10, help="Maximum candidates shown to the LLM.")
-    parser.add_argument("--limit", type=int, default=7, help="Maximum items sent in the digest.")
+    parser.add_argument("--shortlist-limit", type=int, default=20, help="Maximum candidates shown to the LLM.")
+    parser.add_argument("--limit", type=int, default=20, help="Maximum items sent in the digest.")
     parser.add_argument("--dry-run", action="store_true", help="Render only; do not send PushPlus.")
     args = parser.parse_args()
 

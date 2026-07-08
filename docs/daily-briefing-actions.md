@@ -13,7 +13,7 @@
 - 来源配置：运行时从本仓库整理的 AI/research 来源名单生成
 - 投递方式：PushPlus 微信推送
 - 结果文件：合并后的 JSON、运行元数据、调试文件、推送用 Markdown
-- 最终筛选：先用确定性规则生成候选池，再用 OpenAI-compatible 模型做最后 5-7 条中文筛选
+- 最终筛选：先用确定性规则生成全局 Top20 候选，再用 OpenAI-compatible 模型排序并输出 Top20 中文简报
 
 Twitter/X 和 Web Search 默认不启用，因为它们通常需要额外 API key。添加上游
 `tech-news-digest` 所需的 secret 后，可以手动运行 workflow，并把 `only` 改成
